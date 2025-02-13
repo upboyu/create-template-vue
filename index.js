@@ -6,6 +6,7 @@ import chalk from 'chalk' // 用于给命令行文本添加颜色和样式。
 import fs from 'fs' // Node.js 的文件系统模块，用于文件和目录操作。
 import path from 'path' // Node.js 的路径模块，用于处理文件和目录路径。
 import { exec } from 'child_process' // 用于执行命令行命令
+import { rimraf } from 'rimraf' // 跨平台删除
 
 // GitLab 项目仓库地址
 const gitlabRepos = {
@@ -38,15 +39,21 @@ async function promptUser() {
 async function downloadTemplate(repoUrl, projectName) {
   const spinner = ora(`正在初始化项目 ${path.join(process.cwd(), projectName)} ...`).start()
 
-  exec(`git clone ${repoUrl} ${projectName}`, (error, stdout, stderr) => {
+  exec(`git clone --depth=1 ${repoUrl} ${projectName}`, async (error, stdout, stderr) => {
     if (error) {
       spinner.fail(chalk.red(`下载失败：${error.message}`))
       return
     }
-    spinner.succeed(chalk.green('项目初始化完成！可执行以下命令：'))
-    console.log(chalk.green(`\n  cd ${projectName}`))
-    console.log(chalk.green('  npm install'))
-    console.log(chalk.green('  npm run dev'))
+
+    try {
+      await rimraf(`${projectName}/.git`) // 使用 rimraf 删除 .git 文件夹
+      spinner.succeed(chalk.green('项目初始化完成！可执行以下命令：'))
+      console.log(chalk.green(`\n  cd ${projectName}`))
+      console.log(chalk.green('  npm install'))
+      console.log(chalk.green('  npm run dev'))
+    } catch (err) {
+      spinner.fail(chalk.red(`删除 .git 文件夹失败，请手动删除`))
+    }
   })
 }
 
